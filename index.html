@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Centrage VL3</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: #f8f9fa;
+    }
+    h1 {
+        text-align: center;
+        font-size: 1.5em;
+    }
+    .container {
+        max-width: 400px;
+        margin: auto;
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    label {
+        display: block;
+        margin-top: 10px;
+    }
+    input {
+        width: 100%;
+        padding: 5px;
+        font-size: 1em;
+    }
+    button {
+        margin-top: 15px;
+        width: 100%;
+        padding: 10px;
+        background: #007BFF;
+        color: white;
+        border: none;
+        font-size: 1em;
+        border-radius: 5px;
+    }
+    .result {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    .ok { background: #d4edda; color: #155724; }
+    .nok { background: #f8d7da; color: #721c24; }
+    canvas {
+        margin-top: 20px;
+    }
+</style>
+</head>
+<body>
+    <div class="container">
+        <h1>Centrage VL3</h1>
+        <label>Pilote (kg) :</label>
+        <input type="number" id="pilote" value="0" step="0.1">
+        <label>Passager (kg) :</label>
+        <input type="number" id="passager" value="0" step="0.1">
+        <label>Carburant (litres) :</label>
+        <input type="number" id="fuel" value="0" step="0.1">
+        <label>Bagages (kg) :</label>
+        <input type="number" id="bagages" value="0" step="0.1">
+        <button onclick="calculer()">Calculer CG</button>
+        <div id="resultat" class="result"></div>
+        <canvas id="cgChart" width="380" height="300"></canvas>
+    </div>
+
+<script>
+    const brasVide = 284;
+    const brasSieges = 750;
+    const brasFuel = 283;
+    const brasBagages = 1535;
+    const poidsVide = 328.95;
+    const cgMin = 335;
+    const cgMax = 478;
+
+    let chart;
+
+    function calculer() {
+        let pilote = parseFloat(document.getElementById('pilote').value) || 0;
+        let passager = parseFloat(document.getElementById('passager').value) || 0;
+        let fuelL = parseFloat(document.getElementById('fuel').value) || 0;
+        let bagages = parseFloat(document.getElementById('bagages').value) || 0;
+
+        // Conversion carburant en kg (densité ~ 0.72 kg/L)
+        let fuelKg = fuelL * 0.72;
+
+        // Moments
+        let momentVide = poidsVide * brasVide;
+        let momentSieges = (pilote + passager) * brasSieges;
+        let momentFuel = fuelKg * brasFuel;
+        let momentBagages = bagages * brasBagages;
+
+        // Sommes
+        let poidsTotal = poidsVide + pilote + passager + fuelKg + bagages;
+        let momentTotal = momentVide + momentSieges + momentFuel + momentBagages;
+
+        let cg = momentTotal / poidsTotal;
+
+        // Affichage texte
+        let resultatDiv = document.getElementById('resultat');
+        if (cg >= cgMin && cg <= cgMax) {
+            resultatDiv.className = 'result ok';
+            resultatDiv.textContent = `CG = ${cg.toFixed(1)} mm ✅ (Dans les limites) - Poids total: ${poidsTotal.toFixed(1)} kg`;
+        } else {
+            resultatDiv.className = 'result nok';
+            resultatDiv.textContent = `CG = ${cg.toFixed(1)} mm ❌ (Hors limites) - Poids total: ${poidsTotal.toFixed(1)} kg`;
+        }
+
+        // Graphique
+        const ctx = document.getElementById('cgChart').getContext('2d');
+        if (chart) chart.destroy();
+
+        chart = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [
+                    {
+                        label: 'Limites CG',
+                        data: [
+                            {x: cgMin, y: 0},
+                            {x: cgMax, y: poidsTotal}
+                        ],
+                        showLine: true,
+                        borderColor: 'rgba(0, 123, 255, 0.5)',
+                        borderWidth: 2,
+                        fill: false,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Votre CG',
+                        data: [{x: cg, y: poidsTotal}],
+                        backgroundColor: (cg >= cgMin && cg <= cgMax) ? 'green' : 'red',
+                        pointRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        title: {display: true, text: 'Centrage (mm)'},
+                        min: 300,
+                        max: 500
+                    },
+                    y: {
+                        title: {display: true, text: 'Poids total (kg)'},
+                        min: 300,
+                        max: 600
+                    }
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>
